@@ -10,7 +10,7 @@ if(!isset($_SESSION['userid'])){
 }
 
 $userid = $_SESSION['userid'];
-$cart = $conn->query("SELECT c.id as cart_id, b.* , c.quantity FROM cart c JOIN books b ON c.bk_id=b.bk_id WHERE c.user_id=$userid");
+$cart = $conn->query("SELECT c.cart_id as cart_id, b.* , c.quantity FROM cart c JOIN books b ON c.bk_id=b.bk_id WHERE c.user_id=$userid");
 
 if($cart->num_rows == 0){
     echo "<script>alert('Your cart is empty!'); window.location='../books/booksShowUserMode.php';</script>";

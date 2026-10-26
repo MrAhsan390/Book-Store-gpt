@@ -1,5 +1,5 @@
-cart/orderConfirmation.php – Order Confirmation
 <?php
+// cart/orderConfirmation.php – Order Confirmation
 session_start();
 include("../includes/attach.php");
 include("../includes/header.php");
@@ -48,8 +48,8 @@ p { margin:5px 0; }
 <p><strong>Email:</strong> <?php echo $order['email']; ?></p>
 <p><strong>Phone:</strong> <?php echo $order['phone']; ?></p>
 <p><strong>Address:</strong> <?php echo $order['address']; ?></p>
-<p><strong>Status:</strong> <?php echo $order['status']; ?></p>
-<p><strong>Total Amount:</strong> $<?php echo $order['total']; ?></p>
+<p><strong>Status:</strong> <?php echo $order['order_status']; ?></p>
+<p><strong>Total Amount:</strong> $<?php echo $order['total_amount']; ?></p>
 
 <h3>Order Items</h3>
 <table>

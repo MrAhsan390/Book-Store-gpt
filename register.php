@@ -88,24 +88,63 @@
         </div>
 
         <script>
-            document.getElementById("registerForm").onsubmit = function(e){
-                e.preventDefault();
-                let formData = new FormData(this);
-                fetch("registerHandler.php",{
+  
+        document.getElementById("registerForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const msg = document.getElementById("msg");
+            const button = this.querySelector('button[type="submit"]');
+
+            msg.textContent = "Registering your account...";
+            msg.style.color = "#2b6cb0";
+            button.disabled = true;
+
+            try {
+                const response = await fetch("registerHandler.php", {
                     method: "POST",
-                    body: formData
-                })
-                
-                .then(res => res.json())
-                .then(data => {
-                    let msg = document.getElementById("msg");
-                    msg.innerText = data.message;
-                    msg.style.color = data.status=="success"?"green":"red";
-                    if(data.status=="success"){
-                        setTimeout(()=>{ window.location="login.php"; }, 1500);
+                    body: new FormData(this),
+                    headers: {
+                        "Accept": "application/json"
                     }
                 });
+
+                const text = await response.text();
+                let data;
+
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    console.error("Server response:", text);
+                    throw new Error(
+                        "The server returned an invalid response. Check the PHP error log."
+                    );
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.message || "The request failed.");
+                }
+
+                msg.textContent = data.message || "Request completed.";
+                msg.style.color =
+                    data.status === "success" ? "green" : "red";
+
+                if (data.status === "success") {
+                    document.getElementById("registerForm").reset();
+
+                    setTimeout(() => {
+                        window.location.href = "login.php";
+                    }, 1500);
+                }
+
+            } catch (error) {
+                console.error("Registration error:", error);
+                msg.textContent = error.message || "Something went wrong.";
+                msg.style.color = "red";
+            } finally {
+                button.disabled = false;
             }
+        });
+
         </script>
 
     </body>

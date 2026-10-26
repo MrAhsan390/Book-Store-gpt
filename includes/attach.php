@@ -1,10 +1,10 @@
-<!-- 1️⃣ attach.php (Database connection) -->
 <?php
+// <!-- 1️⃣ attach.php (Database connection) -->
 // attach.php
 $servername = "localhost";
 $username = "root";
 $password = ""; // XAMPP default password
-$dbname = "online-book-store"; // updated DB name
+$dbname = "book-store-gpt"; // updated DB name
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
@@ -16,3 +16,7 @@ if ($conn->connect_error) {
     // echo "connection succesfull.";
 }
 ?>
+
+
+
+

@@ -1,41 +1,87 @@
+
 <?php
 session_start();
-include("includes/attach.php");
 
-$response = ['status'=>'error','message'=>'Invalid request'];
+header('Content-Type: application/json; charset=utf-8');
 
-if(isset($_POST['username'], $_POST['email'], $_POST['password'], $_POST['confirm_password'])){
-    
-    $username = $conn->real_escape_string($_POST['username']);
-    $email = $conn->real_escape_string($_POST['email']);
-    $password = $_POST['password'];
-    $confirm_password = $_POST['confirm_password'];
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-    if($password !== $confirm_password){
-        $response['message'] = "Passwords do not match!";
-        echo json_encode($response);
-        exit;
-    }
+function respond(string $status, string $message, int $httpCode = 200): void
+{
+    http_response_code($httpCode);
 
-    // Check if email already exists
-    $check = $conn->query("SELECT userid FROM users WHERE email='$email'");
-    if($check->num_rows > 0){
-        $response['message'] = "Email already registered!";
-        echo json_encode($response);
-        exit;
-    }
+    echo json_encode([
+        'status' => $status,
+        'message' => $message
+    ]);
 
-    // Insert user
-    $hash = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $conn->prepare("INSERT INTO users (username,email,password) VALUES (?,?,?)");
-    $stmt->bind_param("sss",$username,$email,$hash);
-
-    if($stmt->execute()){
-        $response['status'] = 'success';
-        $response['message'] = "Registration successful! Redirecting to login...";
-    } else {
-        $response['message'] = "Database error: ".$conn->error;
-    }
+    exit;
 }
 
-echo json_encode($response);
+try {
+    require __DIR__ . '/includes/attach.php';
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        respond('error', 'Invalid request method.', 405);
+    }
+
+    $username = trim($_POST['username'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+
+    if ($username === '' || $email === '' ||
+        $password === '' || $confirmPassword === '') {
+        respond('error', 'Please fill in all fields.', 400);
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        respond('error', 'Please enter a valid email address.', 400);
+    }
+
+    if ($password !== $confirmPassword) {
+        respond('error', 'Passwords do not match.', 400);
+    }
+
+    if (strlen($password) < 8) {
+        respond('error', 'Your password must be at least 8 characters long.', 400);
+    }
+
+    $stmt = $conn->prepare(
+        'SELECT userid FROM users WHERE email = ?'
+    );
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+
+    if ($stmt->get_result()->num_rows > 0) {
+        $stmt->close();
+        respond('error', 'This email is already registered.', 409);
+    }
+
+    $stmt->close();
+
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+
+    $stmt = $conn->prepare(
+        'INSERT INTO users (username, email, password)
+         VALUES (?, ?, ?)'
+    );
+
+    $stmt->bind_param('sss', $username, $email, $passwordHash);
+    $stmt->execute();
+    $stmt->close();
+
+    respond(
+        'success',
+        'Registration successful! Redirecting to login...'
+    );
+
+} catch (Throwable $e) {
+    error_log('Registration error: ' . $e->getMessage());
+
+    respond(
+        'error',
+        'Registration failed due to a server error. Please check the PHP error log.',
+        500
+    );
+}

@@ -14,6 +14,7 @@ if(isset($_POST['email']) && isset($_POST['password'])){
         if(password_verify($password, $user['password'])){
             $_SESSION['userid'] = $user['userid'];
             $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
             $response['status'] = 'success';
             $response['message'] = "Login successful!";
         } else {

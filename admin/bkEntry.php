@@ -1,14 +1,14 @@
 admin/bkEntry.php – Add New Book
 <?php
 session_start();
-include("../includes/attach.php");
-include("../includes/header.php");
-
 // Admin check
 if(!isset($_SESSION['userid']) || $_SESSION['role'] !== 'admin'){
     header("Location: ../login.php");
     exit;
 }
+include("../includes/attach.php");
+include("../includes/header.php");
+
 ?>
 
 
@@ -69,7 +69,7 @@ if(!isset($_SESSION['userid']) || $_SESSION['role'] !== 'admin'){
             <form id="bookForm" enctype="multipart/form-data">
                 <input type="text" name="bk_title" placeholder="Book Title" required>
                 <input type="text" name="bk_author" placeholder="Author" required>
-                <input type="text" name="bk_edition" placeholder="Edition" required>
+                <input type="text" name="bk_eddition" placeholder="Eddition" required>
                 <input type="number" name="bk_price" placeholder="Price" required step="0.01">
                 <input type="file" name="bk_image" accept="image/*" required>
                 <button type="submit">Add Book</button>

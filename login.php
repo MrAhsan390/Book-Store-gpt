@@ -99,7 +99,7 @@
             msg.innerText = data.message;
             msg.style.color = data.status=="success"?"green":"red";
             if(data.status=="success"){
-                setTimeout(()=>{ window.location="profile.php"; }, 1000);
+                setTimeout(()=>{ window.location="index.php"; }, 1000);
             }
         });
     }

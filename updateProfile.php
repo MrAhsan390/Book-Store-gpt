@@ -1,51 +1,86 @@
-
-
-<!-- updateProfile.php – AJAX Profile Update Handler -->
 <?php
 session_start();
-include("includes/attach.php");
+require_once __DIR__ . "/includes/attach.php";
 
-$response = ['status'=>'error','message'=>'Invalid request'];
+header("Content-Type: application/json; charset=UTF-8");
 
-if(!isset($_SESSION['userid'])){
-    echo json_encode($response);
+function sendResponse($status, $message) {
+    echo json_encode([
+        "status" => $status,
+        "message" => $message
+    ]);
     exit;
 }
 
-$user_id = $_SESSION['userid'];
-$username = $conn->real_escape_string($_POST['username'] ?? '');
-$email = $conn->real_escape_string($_POST['email'] ?? '');
-$password = $_POST['password'] ?? '';
-
-if(!$username || !$email){
-    $response['message'] = "Username and email are required!";
-    echo json_encode($response);
-    exit;
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    sendResponse("error", "Invalid request method.");
 }
 
-// Check email uniqueness
-$result = $conn->query("SELECT userid FROM users WHERE email='$email' AND userid!=$user_id");
-if($result->num_rows > 0){
-    $response['message'] = "Email already taken!";
-    echo json_encode($response);
-    exit;
+if (!isset($_SESSION["userid"])) {
+    sendResponse("error", "Please log in again.");
 }
 
-// Update query
-if($password){
-    $hash = password_hash($password, PASSWORD_DEFAULT);
-    $stmt = $conn->prepare("UPDATE users SET username=?, email=?, password=? WHERE userid=?");
-    $stmt->bind_param("sssi",$username,$email,$hash,$user_id);
-}else{
-    $stmt = $conn->prepare("UPDATE users SET username=?, email=? WHERE userid=?");
-    $stmt->bind_param("ssi",$username,$email,$user_id);
+$user_id = (int) $_SESSION["userid"];
+$username = trim($_POST["username"] ?? "");
+$email = trim($_POST["email"] ?? "");
+$password = $_POST["password"] ?? "";
+
+if ($username === "" || $email === "") {
+    sendResponse("error", "Username and email are required.");
 }
 
-if($stmt->execute()){
-    $response['status'] = 'success';
-    $response['message'] = "Profile updated successfully!";
-}else{
-    $response['message'] = "Database error: ".$conn->error;
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    sendResponse("error", "Please enter a valid email address.");
 }
 
-echo json_encode($response);
+// Check whether another user already uses this email.
+$stmt = $conn->prepare(
+    "SELECT userid FROM users WHERE email = ? AND userid != ? LIMIT 1"
+);
+$stmt->bind_param("si", $email, $user_id);
+$stmt->execute();
+$emailResult = $stmt->get_result();
+$emailExists = $emailResult->num_rows > 0;
+$stmt->close();
+
+if ($emailExists) {
+    sendResponse("error", "This email address is already in use.");
+}
+
+if ($password !== "") {
+    if (strlen($password) < 8) {
+        sendResponse("error", "Your new password must be at least 8 characters.");
+    }
+
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+    $stmt = $conn->prepare(
+        "UPDATE users
+         SET username = ?, email = ?, password = ?
+         WHERE userid = ?"
+    );
+    $stmt->bind_param(
+        "sssi",
+        $username,
+        $email,
+        $hashedPassword,
+        $user_id
+    );
+} else {
+    $stmt = $conn->prepare(
+        "UPDATE users
+         SET username = ?, email = ?
+         WHERE userid = ?"
+    );
+    $stmt->bind_param("ssi", $username, $email, $user_id);
+}
+
+if ($stmt->execute()) {
+    $_SESSION["username"] = $username;
+    $stmt->close();
+    sendResponse("success", "Profile updated successfully!");
+}
+
+$stmt->close();
+sendResponse("error", "Unable to update your profile. Please try again.");
+?>
