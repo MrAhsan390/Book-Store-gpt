@@ -4,7 +4,7 @@ require_once __DIR__ . "/../includes/attach.php";
 
 header("Content-Type: application/json; charset=UTF-8");
 
-function respond($status, $message) {
+function sendJson($status, $message) {
     echo json_encode([
         "status" => $status,
         "message" => $message
@@ -13,52 +13,47 @@ function respond($status, $message) {
 }
 
 if (!isset($_SESSION['userid'])) {
-    respond("error", "Please log in to manage your cart.");
+    sendJson("error", "Please log in again.");
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    respond("error", "Invalid request method.");
+    sendJson("error", "Invalid request.");
 }
 
-$user_id = (int) $_SESSION['userid'];
-$cart_id = filter_input(INPUT_POST, 'cart_id', FILTER_VALIDATE_INT);
-
-if (!$cart_id || $cart_id < 1) {
-    respond("error", "Invalid cart item.");
-}
-
-// Confirm this cart item belongs to the logged-in user.
-$stmt = $conn->prepare(
-    "SELECT cart_id FROM cart WHERE cart_id = ? AND user_id = ?"
+$userId = (int) $_SESSION['userid'];
+$cartId = filter_var(
+    $_POST['cart_id'] ?? '',
+    FILTER_VALIDATE_INT
 );
-$stmt->bind_param("ii", $cart_id, $user_id);
-$stmt->execute();
-$exists = $stmt->get_result()->num_rows > 0;
-$stmt->close();
 
-if (!$exists) {
-    respond("error", "Cart item not found.");
+if (!$cartId || $cartId < 1) {
+    sendJson("error", "Invalid cart item ID.");
 }
 
+// Remove item
 if (isset($_POST['remove'])) {
     $stmt = $conn->prepare(
         "DELETE FROM cart WHERE cart_id = ? AND user_id = ?"
     );
-    $stmt->bind_param("ii", $cart_id, $user_id);
+    $stmt->bind_param("ii", $cartId, $userId);
 
     if ($stmt->execute() && $stmt->affected_rows > 0) {
         $stmt->close();
-        respond("success", "Book removed from your cart.");
+        sendJson("success", "Book removed from cart.");
     }
 
     $stmt->close();
-    respond("error", "Could not remove the book.");
+    sendJson("error", "The book could not be removed.");
 }
 
-$quantity = filter_input(INPUT_POST, 'quantity', FILTER_VALIDATE_INT);
+// Update quantity
+$quantity = filter_var(
+    $_POST['quantity'] ?? '',
+    FILTER_VALIDATE_INT
+);
 
-if (!$quantity || $quantity < 1) {
-    respond("error", "Quantity must be at least 1.");
+if ($quantity === false || $quantity === null || $quantity < 1) {
+    sendJson("error", "Enter a valid quantity of at least 1.");
 }
 
 $stmt = $conn->prepare(
@@ -66,13 +61,29 @@ $stmt = $conn->prepare(
      SET quantity = ?
      WHERE cart_id = ? AND user_id = ?"
 );
-$stmt->bind_param("iii", $quantity, $cart_id, $user_id);
+$stmt->bind_param("iii", $quantity, $cartId, $userId);
 
-if ($stmt->execute()) {
+if (!$stmt->execute()) {
     $stmt->close();
-    respond("success", "Cart quantity updated successfully.");
+    sendJson("error", "Database error while updating quantity.");
 }
 
 $stmt->close();
-respond("error", "Could not update the cart.");
+
+// Verify the saved quantity
+$stmt = $conn->prepare(
+    "SELECT quantity FROM cart
+     WHERE cart_id = ? AND user_id = ?"
+);
+$stmt->bind_param("ii", $cartId, $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+$savedItem = $result->fetch_assoc();
+$stmt->close();
+
+if (!$savedItem || (int)$savedItem['quantity'] !== $quantity) {
+    sendJson("error", "The quantity was not saved. Please try again.");
+}
+
+sendJson("success", "Quantity updated to " . $quantity . ".");
 ?>

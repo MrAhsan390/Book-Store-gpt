@@ -117,8 +117,8 @@ $userid = $_SESSION['userid'];
                         alert("The server returned an invalid response. Check updateCart.php.");
                         return;
                     }
-
                     if (data.status === "success") {
+                        alert(data.message);
                         window.location.reload();
                     } else {
                         alert(data.message || "Cart operation failed.");
